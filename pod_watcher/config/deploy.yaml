@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-watcher-deployment
+  labels:
+    app: pod-watcher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pod-watcher
+  template:
+    metadata:
+      labels:
+        app: pod-watcher
+    spec:
+      serviceAccountName: pod-watcher
+      containers:
+      - name: pod-watcher
+        image: chaocai/pod-watcher:v0.0.1
+        imagePullPolicy: Always
