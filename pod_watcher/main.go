@@ -7,9 +7,13 @@ import (
 	"path/filepath"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -26,6 +30,38 @@ func listPods(cs *kubernetes.Clientset) {
 		panic(err)
 	}
 	log.Printf("There are %d pods in the cluster\n", len(pods.Items))
+}
+
+func watchPods(cs *kubernetes.Clientset) {
+
+	addHandler := func(obj interface{}) {
+		log.Println("Add Event")
+		listPods(cs)
+	}
+
+	updateHandler := func(oldObj, newObj interface{}) {
+		log.Println("Update Event")
+		listPods(cs)
+	}
+
+	deleteHandler := func(obj interface{}) {
+		log.Println("Delete Event")
+		listPods(cs)
+	}
+	watchList := cache.NewListWatchFromClient(cs.CoreV1().RESTClient(), "pods", metav1.NamespaceAll,
+		fields.Everything())
+	_, controller := cache.NewInformer(
+		watchList,
+		&corev1.Pod{},
+		time.Second*300,
+		cache.ResourceEventHandlerFuncs{
+			AddFunc:    addHandler,
+			UpdateFunc: updateHandler,
+			DeleteFunc: deleteHandler,
+		},
+	)
+	stop := make(chan struct{})
+	go controller.Run(stop)
 }
 
 func createClientsetFromLocal() (*kubernetes.Clientset, error) {
@@ -57,12 +93,13 @@ func createClientsetFromPod() (*kubernetes.Clientset, error) {
 func main() {
 	log.Println("Start")
 	for {
-		cs, err := createClientsetFromPod()
+		cs, err := createClientsetFromLocal()
 		if err != nil {
 			panic(err)
 		}
-		listPods(cs)
-		time.Sleep(time.Second * 10)
+		//listPods(cs)
+		watchPods(cs)
+		time.Sleep(time.Second * 1000)
 	}
 	log.Println("End")
 }
