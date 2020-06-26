@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,12 +11,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-
+	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
+
+var cnt int = 0
+var cntUpdate int = 0
 
 func homeDir() string {
 	if h := os.Getenv("HOME"); h != "" {
@@ -33,14 +38,17 @@ func listPods(cs *kubernetes.Clientset) {
 }
 
 func watchPods(cs *kubernetes.Clientset) {
-
 	addHandler := func(obj interface{}) {
-		log.Println("Add Event")
+		cnt++
+		log.Println("Add Event", cnt)
 		listPods(cs)
 	}
 
 	updateHandler := func(oldObj, newObj interface{}) {
-		log.Println("Update Event")
+		cntUpdate++
+		log.Println("Update Event", cntUpdate)
+		log.Println("old:", oldObj)
+		log.Println("new:", newObj)
 		listPods(cs)
 	}
 
@@ -48,12 +56,16 @@ func watchPods(cs *kubernetes.Clientset) {
 		log.Println("Delete Event")
 		listPods(cs)
 	}
-	watchList := cache.NewListWatchFromClient(cs.CoreV1().RESTClient(), "pods", metav1.NamespaceAll,
-		fields.Everything())
+	sel, err := fields.ParseSelector("status.phase=Running")
+	if err != nil {
+		panic(err)
+	}
+	watchList := cache.NewListWatchFromClient(cs.CoreV1().RESTClient(), string(corev1.ResourcePods), metav1.NamespaceAll,
+		sel)
 	_, controller := cache.NewInformer(
 		watchList,
 		&corev1.Pod{},
-		time.Second*300,
+		0,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    addHandler,
 			UpdateFunc: updateHandler,
@@ -62,6 +74,102 @@ func watchPods(cs *kubernetes.Clientset) {
 	)
 	stop := make(chan struct{})
 	go controller.Run(stop)
+}
+
+func watchPodsShared(cs *kubernetes.Clientset) {
+	addHandler := func(obj interface{}) {
+		cnt++
+		log.Println("Add Event", cnt)
+		listPods(cs)
+	}
+
+	updateHandler := func(oldObj, newObj interface{}) {
+		cntUpdate++
+		log.Println("Update Event", cntUpdate)
+		log.Println("old:", oldObj)
+		log.Println("new:", newObj)
+		listPods(cs)
+	}
+
+	deleteHandler := func(obj interface{}) {
+		log.Println("Delete Event")
+		listPods(cs)
+	}
+	factory := informers.NewSharedInformerFactory(cs, 0)
+
+	// Get the informer for the right resource, in this case a Pod
+	informer := factory.Core().V1().Pods().Informer()
+
+	// Create a channel to stops the shared informer gracefully
+	stopper := make(chan struct{})
+	defer close(stopper)
+
+	// Kubernetes serves an utility to handle API crashes
+	defer runtime.HandleCrash()
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		// When a new pod gets created
+		AddFunc: addHandler,
+		// When a pod gets updated
+		UpdateFunc: updateHandler,
+		// When a pod gets deleted
+		DeleteFunc: deleteHandler,
+	})
+
+	// You need to start the informer, in my case, it runs in the background
+	go informer.Run(stopper)
+	if !cache.WaitForCacheSync(stopper, informer.HasSynced) {
+		runtime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
+		return
+	}
+	<-stopper
+}
+
+func watchPodsShared2(cs *kubernetes.Clientset) {
+	addHandler := func(obj interface{}) {
+		cnt++
+		log.Println("Add Event", cnt)
+		listPods(cs)
+	}
+
+	updateHandler := func(oldObj, newObj interface{}) {
+		cntUpdate++
+		log.Println("Update Event", cntUpdate)
+		log.Println("old:", oldObj)
+		log.Println("new:", newObj)
+		listPods(cs)
+	}
+
+	deleteHandler := func(obj interface{}) {
+		log.Println("Delete Event")
+		listPods(cs)
+	}
+	factory := informers.NewSharedInformerFactory(cs, 0)
+
+	// Get the informer for the right resource, in this case a Pod
+	informer := factory.Core().V1().Pods().Informer()
+
+	// Create a channel to stops the shared informer gracefully
+	stopper := make(chan struct{})
+	defer close(stopper)
+
+	// Kubernetes serves an utility to handle API crashes
+	defer runtime.HandleCrash()
+	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		// When a new pod gets created
+		AddFunc: addHandler,
+		// When a pod gets updated
+		UpdateFunc: updateHandler,
+		// When a pod gets deleted
+		DeleteFunc: deleteHandler,
+	})
+
+	// You need to start the informer, in my case, it runs in the background
+	go informer.Run(stopper)
+	if !cache.WaitForCacheSync(stopper, informer.HasSynced) {
+		runtime.HandleError(fmt.Errorf("Timed out waiting for caches to sync"))
+		return
+	}
+	<-stopper
 }
 
 func createClientsetFromLocal() (*kubernetes.Clientset, error) {
@@ -99,7 +207,9 @@ func main() {
 		}
 		//listPods(cs)
 		watchPods(cs)
-		time.Sleep(time.Second * 1000)
+		//watchPodsShared(cs)
+		time.Sleep(time.Second * 10000000)
+
 	}
 	log.Println("End")
 }
