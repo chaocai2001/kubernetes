@@ -1,0 +1,55 @@
+{
+    "apiVersion": "v1",
+    "kind": "Namespace",
+    "metadata": {
+        "annotations": {
+            "cattle.io/status": "{\"Conditions\":[{\"Type\":\"ResourceQuotaInit\",\"Status\":\"True\",\"Message\":\"\",\"LastUpdateTime\":\"2019-11-06T14:55:23Z\"},{\"Type\":\"InitialRolesPopulated\",\"Status\":\"True\",\"Message\":\"\",\"LastUpdateTime\":\"2019-11-06T14:55:24Z\"}]}",
+            "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"annotations\":{},\"labels\":{\"istio-injection\":\"disabled\",\"istio-operator-managed\":\"Reconcile\",\"operator.istio.io/component\":\"Base\",\"operator.istio.io/managed\":\"Reconcile\",\"operator.istio.io/version\":\"1.4.0\"},\"name\":\"istio-system\"}}\n",
+            "lifecycle.cattle.io/create.namespace-auth": "true"
+        },
+        "creationTimestamp": "2019-11-03T01:59:49Z",
+        "deletionGracePeriodSeconds": 0,
+        "deletionTimestamp": "2020-06-20T14:17:36Z",
+        "finalizers": [
+            "controller.cattle.io/namespace-auth"
+        ],
+        "labels": {
+            "cattle.io/creator": "norman",
+            "istio-injection": "disabled",
+            "istio-operator-managed": "Reconcile",
+            "operator.istio.io/component": "Base",
+            "operator.istio.io/managed": "Reconcile",
+            "operator.istio.io/version": "1.4.0"
+        },
+        "name": "istio-system",
+        "resourceVersion": "104957836",
+        "selfLink": "/api/v1/namespaces/istio-system",
+        "uid": "9e1de1f8-fddd-11e9-bb89-0ab3dd7b37fa"
+    },
+    "status": {
+        "conditions": [
+            {
+                "lastTransitionTime": "2020-08-31T13:47:42Z",
+                "message": "All resources successfully discovered",
+                "reason": "ResourcesDiscovered",
+                "status": "False",
+                "type": "NamespaceDeletionDiscoveryFailure"
+            },
+            {
+                "lastTransitionTime": "2020-08-31T13:47:42Z",
+                "message": "All legacy kube types successfully parsed",
+                "reason": "ParsedGroupVersions",
+                "status": "False",
+                "type": "NamespaceDeletionGroupVersionParsingFailure"
+            },
+            {
+                "lastTransitionTime": "2020-08-31T13:47:42Z",
+                "message": "All content successfully deleted",
+                "reason": "ContentDeleted",
+                "status": "False",
+                "type": "NamespaceDeletionContentFailure"
+            }
+        ],
+        "phase": "Terminating"
+    }
+}
